@@ -1,4 +1,4 @@
-#include "mmemory.h"
+п»ї#include "mmemory.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -6,49 +6,49 @@
 
 #define TRUE			1
 #define FALSE			0
-#define ALLOCSIZE		128				/* объем имеющейся памяти (128 байт) */
-#define NULL_SYMBOL		'\0'			/* символ инициализации памяти */
-#define SWAPING_NAME	"swap.dat"		/* файл подкачки */
+#define ALLOCSIZE		128				/* РѕР±СЉРµРј РёРјРµСЋС‰РµР№СЃСЏ РїР°РјСЏС‚Рё (128 Р±Р°Р№С‚) */
+#define NULL_SYMBOL		'\0'			/* СЃРёРјРІРѕР» РёРЅРёС†РёР°Р»РёР·Р°С†РёРё РїР°РјСЏС‚Рё */
+#define SWAPING_NAME	"swap.dat"		/* С„Р°Р№Р» РїРѕРґРєР°С‡РєРё */
 
-/* Коды возврата */
+/* РљРѕРґС‹ РІРѕР·РІСЂР°С‚Р° */
 const int SUCCESSFUL_CODE				=  0;
 const int INCORRECT_PARAMETERS_ERROR	= -1;
 const int NOT_ENOUGH_MEMORY_ERROR		= -2;
 const int OUT_OF_RANGE_ERROR			= -2;
 const int UNKNOWN_ERROR					=  1;
 
-/* Блок непрерывной памяти (занятой или свободный) */
+/* Р‘Р»РѕРє РЅРµРїСЂРµСЂС‹РІРЅРѕР№ РїР°РјСЏС‚Рё (Р·Р°РЅСЏС‚РѕР№ РёР»Рё СЃРІРѕР±РѕРґРЅС‹Р№) */
 struct block {
-	struct block*	pNext;			// следующий свободный или занятый блок
-	unsigned int	szBlock;		// размер блока	
-	unsigned int	offsetBlock;	// смещение блока относительно страницы
+	struct block*	pNext;			// СЃР»РµРґСѓСЋС‰РёР№ СЃРІРѕР±РѕРґРЅС‹Р№ РёР»Рё Р·Р°РЅСЏС‚С‹Р№ Р±Р»РѕРє
+	unsigned int	szBlock;		// СЂР°Р·РјРµСЂ Р±Р»РѕРєР°	
+	unsigned int	offsetBlock;	// СЃРјРµС‰РµРЅРёРµ Р±Р»РѕРєР° РѕС‚РЅРѕСЃРёС‚РµР»СЊРЅРѕ СЃС‚СЂР°РЅРёС†С‹
 };
 
-/* Информация о странице в таблице страниц */
+/* РРЅС„РѕСЂРјР°С†РёСЏ Рѕ СЃС‚СЂР°РЅРёС†Рµ РІ С‚Р°Р±Р»РёС†Рµ СЃС‚СЂР°РЅРёС† */
 struct pageInfo {
-	unsigned long	offsetPage;		// смещение страницы от начала памяти или файла
-	char			isUse;			// флаг, описывающий находится ли страница в памяти или на диске
+	unsigned long	offsetPage;		// СЃРјРµС‰РµРЅРёРµ СЃС‚СЂР°РЅРёС†С‹ РѕС‚ РЅР°С‡Р°Р»Р° РїР°РјСЏС‚Рё РёР»Рё С„Р°Р№Р»Р°
+	char			isUse;			// С„Р»Р°Рі, РѕРїРёСЃС‹РІР°СЋС‰РёР№ РЅР°С…РѕРґРёС‚СЃСЏ Р»Рё СЃС‚СЂР°РЅРёС†Р° РІ РїР°РјСЏС‚Рё РёР»Рё РЅР° РґРёСЃРєРµ
 };
 
-/* Заголовок страницы */
+/* Р—Р°РіРѕР»РѕРІРѕРє СЃС‚СЂР°РЅРёС†С‹ */
 typedef struct page {
-	struct block*	pFirstFree;			// первый свободный блок
-	struct block*	pFirstUse;			// первый занятый блок
-	unsigned int	maxSizeFreeBlock;	// макс. размер сводного блока	
-	struct pageInfo	pInfo;				// информация о странице
-	unsigned int	activityFactor;		// коэффициент активности
+	struct block*	pFirstFree;			// РїРµСЂРІС‹Р№ СЃРІРѕР±РѕРґРЅС‹Р№ Р±Р»РѕРє
+	struct block*	pFirstUse;			// РїРµСЂРІС‹Р№ Р·Р°РЅСЏС‚С‹Р№ Р±Р»РѕРє
+	unsigned int	maxSizeFreeBlock;	// РјР°РєСЃ. СЂР°Р·РјРµСЂ СЃРІРѕРґРЅРѕРіРѕ Р±Р»РѕРєР°	
+	struct pageInfo	pInfo;				// РёРЅС„РѕСЂРјР°С†РёСЏ Рѕ СЃС‚СЂР°РЅРёС†Рµ
+	unsigned int	activityFactor;		// РєРѕСЌС„С„РёС†РёРµРЅС‚ Р°РєС‚РёРІРЅРѕСЃС‚Рё
 } page;
 
-/* Таблица страниц */
+/* РўР°Р±Р»РёС†Р° СЃС‚СЂР°РЅРёС† */
 struct page *pageTable; 
 
-/* Количество страниц (в памяти и на диске) */
+/* РљРѕР»РёС‡РµСЃС‚РІРѕ СЃС‚СЂР°РЅРёС† (РІ РїР°РјСЏС‚Рё Рё РЅР° РґРёСЃРєРµ) */
 int numberOfPages = 0;
 
-/* Размер страницы */
+/* Р Р°Р·РјРµСЂ СЃС‚СЂР°РЅРёС†С‹ */
 int sizePage = 0;
 
-/* Физическая память */
+/* Р¤РёР·РёС‡РµСЃРєР°СЏ РїР°РјСЏС‚СЊ */
 VA allocbuf;
 
 void ___print_memory();
@@ -77,27 +77,27 @@ int _malloc (VA* ptr, size_t szBlock)
 		return INCORRECT_PARAMETERS_ERROR;
 	}
 	
-	// обходим все страницы
+	// РѕР±С…РѕРґРёРј РІСЃРµ СЃС‚СЂР°РЅРёС†С‹
 	for (i = 0; i < numberOfPages; i++)
 	{
-		// если в странице есть блок достаточной свободной памяти
+		// РµСЃР»Рё РІ СЃС‚СЂР°РЅРёС†Рµ РµСЃС‚СЊ Р±Р»РѕРє РґРѕСЃС‚Р°С‚РѕС‡РЅРѕР№ СЃРІРѕР±РѕРґРЅРѕР№ РїР°РјСЏС‚Рё
 		if (pageTable[i].maxSizeFreeBlock >= szBlock)
 		{
-			// если эта страница в памяти, то нам повезло
+			// РµСЃР»Рё СЌС‚Р° СЃС‚СЂР°РЅРёС†Р° РІ РїР°РјСЏС‚Рё, С‚Рѕ РЅР°Рј РїРѕРІРµР·Р»Рѕ
 			if (pageTable[i].pInfo.isUse)
 			{
 				return mallocInPage(ptr, szBlock, i);
 			}
 			else if (!reservePageInSwap)
 			{
-				// если эта страница в свопе, то запоминаем её
-				// на случай, если в памяти подходящей страницы не будет найдено
+				// РµСЃР»Рё СЌС‚Р° СЃС‚СЂР°РЅРёС†Р° РІ СЃРІРѕРїРµ, С‚Рѕ Р·Р°РїРѕРјРёРЅР°РµРј РµС‘
+				// РЅР° СЃР»СѓС‡Р°Р№, РµСЃР»Рё РІ РїР°РјСЏС‚Рё РїРѕРґС…РѕРґСЏС‰РµР№ СЃС‚СЂР°РЅРёС†С‹ РЅРµ Р±СѓРґРµС‚ РЅР°Р№РґРµРЅРѕ
 				reservePageInSwap = &pageTable[i];
 				reservePageNum = i;
 			}
 		}
 	}
-	// если свободная страница нашлась только в свопе
+	// РµСЃР»Рё СЃРІРѕР±РѕРґРЅР°СЏ СЃС‚СЂР°РЅРёС†Р° РЅР°С€Р»Р°СЃСЊ С‚РѕР»СЊРєРѕ РІ СЃРІРѕРїРµ
 	if (reservePageInSwap)
 	{
 		int __errno = swap(getLeastActivePageInMemory(), reservePageInSwap);
@@ -142,8 +142,8 @@ int _read (VA ptr, void* pBuffer, size_t szBuffer)
 		return INCORRECT_PARAMETERS_ERROR;
 	}
 	raddr = convertVirtualtoPhysicalAddress(ptr, &indexPage, &offsetBlock);
-	// если не получили адрес, то нужный блок в свопе
-	// выполняем страничное прерывание
+	// РµСЃР»Рё РЅРµ РїРѕР»СѓС‡РёР»Рё Р°РґСЂРµСЃ, С‚Рѕ РЅСѓР¶РЅС‹Р№ Р±Р»РѕРє РІ СЃРІРѕРїРµ
+	// РІС‹РїРѕР»РЅСЏРµРј СЃС‚СЂР°РЅРёС‡РЅРѕРµ РїСЂРµСЂС‹РІР°РЅРёРµ
 	if (!raddr)
 	{
 		int __errno = swap(getLeastActivePageInMemory(), &pageTable[indexPage]);
@@ -236,11 +236,11 @@ int _init (int n, int szPage)
 
 /**
  	@func	initPageTable
- 	@brief	Инициализация таблицы страниц
+ 	@brief	РРЅРёС†РёР°Р»РёР·Р°С†РёСЏ С‚Р°Р±Р»РёС†С‹ СЃС‚СЂР°РЅРёС†
 	
-	@return	код ошибки
-	@retval	0	успешное выполнение
-	@retval	1	неизвестная ошибка
+	@return	РєРѕРґ РѕС€РёР±РєРё
+	@retval	0	СѓСЃРїРµС€РЅРѕРµ РІС‹РїРѕР»РЅРµРЅРёРµ
+	@retval	1	РЅРµРёР·РІРµСЃС‚РЅР°СЏ РѕС€РёР±РєР°
  **/
 int initPageTable()
 {
@@ -251,36 +251,36 @@ int initPageTable()
 
 	for (i = 0; i < numberOfPages; i++)
 	{
-		// изначально у каждой страницы есть единственный свободный блок с размером, равным размеру страницы
-		// выделяем память под свободный блок и инициализируем его
+		// РёР·РЅР°С‡Р°Р»СЊРЅРѕ Сѓ РєР°Р¶РґРѕР№ СЃС‚СЂР°РЅРёС†С‹ РµСЃС‚СЊ РµРґРёРЅСЃС‚РІРµРЅРЅС‹Р№ СЃРІРѕР±РѕРґРЅС‹Р№ Р±Р»РѕРє СЃ СЂР°Р·РјРµСЂРѕРј, СЂР°РІРЅС‹Рј СЂР°Р·РјРµСЂСѓ СЃС‚СЂР°РЅРёС†С‹
+		// РІС‹РґРµР»СЏРµРј РїР°РјСЏС‚СЊ РїРѕРґ СЃРІРѕР±РѕРґРЅС‹Р№ Р±Р»РѕРє Рё РёРЅРёС†РёР°Р»РёР·РёСЂСѓРµРј РµРіРѕ
 		struct block* firstBlock = (struct block *) malloc(sizeof(struct block));
 		firstBlock -> pNext = NULL;
 		firstBlock -> szBlock = sizePage;
 		firstBlock -> offsetBlock = 0;
 
-		// инициализируем страницу
+		// РёРЅРёС†РёР°Р»РёР·РёСЂСѓРµРј СЃС‚СЂР°РЅРёС†Сѓ
 		pageTable[i].pFirstFree = firstBlock;
 		pageTable[i].pFirstUse = NULL;
 		pageTable[i].maxSizeFreeBlock = sizePage;				
 		pageTable[i].activityFactor = 0;
 
-		// если памяти хватает, то пишем страницу в память, иначе на диск
+		// РµСЃР»Рё РїР°РјСЏС‚Рё С…РІР°С‚Р°РµС‚, С‚Рѕ РїРёС€РµРј СЃС‚СЂР°РЅРёС†Сѓ РІ РїР°РјСЏС‚СЊ, РёРЅР°С‡Рµ РЅР° РґРёСЃРє
 		if ((i+1) * sizePage <= ALLOCSIZE)
 		{			
 			pageTable[i].pInfo.offsetPage = numberOfRAMPages++;
 			pageTable[i].pInfo.isUse = TRUE;
-			// указатель на начало первого блока при инициализации равен физическому адресу страницы
+			// СѓРєР°Р·Р°С‚РµР»СЊ РЅР° РЅР°С‡Р°Р»Рѕ РїРµСЂРІРѕРіРѕ Р±Р»РѕРєР° РїСЂРё РёРЅРёС†РёР°Р»РёР·Р°С†РёРё СЂР°РІРµРЅ С„РёР·РёС‡РµСЃРєРѕРјСѓ Р°РґСЂРµСЃСѓ СЃС‚СЂР°РЅРёС†С‹
 			//pageTable[i].pFirstFree -> allocp = convertVirtualtoPhysicalAddress(pageTable[i].pInfo.offsetPage);
 		}
 		else
 		{
-			__errno = writef(numberOfSwapPages, allocbuf);	// ??? надо ли запоминать инициализированную память?????
+			__errno = writef(numberOfSwapPages, allocbuf);	// ??? РЅР°РґРѕ Р»Рё Р·Р°РїРѕРјРёРЅР°С‚СЊ РёРЅРёС†РёР°Р»РёР·РёСЂРѕРІР°РЅРЅСѓСЋ РїР°РјСЏС‚СЊ?????
 			if (!__errno)
 			{
 				pageTable[i].pInfo.offsetPage = numberOfSwapPages++;
 				pageTable[i].pInfo.isUse = FALSE;
-				// т.к. уже вышли за пределы физической памяти, то устанавливаем указатель на начало памяти
-				// при страничном прерывании он будет пересчитываться в зависимости от нового смещения страницы
+				// С‚.Рє. СѓР¶Рµ РІС‹С€Р»Рё Р·Р° РїСЂРµРґРµР»С‹ С„РёР·РёС‡РµСЃРєРѕР№ РїР°РјСЏС‚Рё, С‚Рѕ СѓСЃС‚Р°РЅР°РІР»РёРІР°РµРј СѓРєР°Р·Р°С‚РµР»СЊ РЅР° РЅР°С‡Р°Р»Рѕ РїР°РјСЏС‚Рё
+				// РїСЂРё СЃС‚СЂР°РЅРёС‡РЅРѕРј РїСЂРµСЂС‹РІР°РЅРёРё РѕРЅ Р±СѓРґРµС‚ РїРµСЂРµСЃС‡РёС‚С‹РІР°С‚СЊСЃСЏ РІ Р·Р°РІРёСЃРёРјРѕСЃС‚Рё РѕС‚ РЅРѕРІРѕРіРѕ СЃРјРµС‰РµРЅРёСЏ СЃС‚СЂР°РЅРёС†С‹
 				//pageTable[i].pFirstFree -> allocp = allocbuf;
 			}
 			else
@@ -294,7 +294,7 @@ int initPageTable()
 
 /**
  	@func	___print_memory
- 	@brief	Вывести содержимое физической памяти на консоль (для тестирования)
+ 	@brief	Р’С‹РІРµСЃС‚Рё СЃРѕРґРµСЂР¶РёРјРѕРµ С„РёР·РёС‡РµСЃРєРѕР№ РїР°РјСЏС‚Рё РЅР° РєРѕРЅСЃРѕР»СЊ (РґР»СЏ С‚РµСЃС‚РёСЂРѕРІР°РЅРёСЏ)
  **/
 void ___print_memory()
 {
@@ -308,9 +308,9 @@ void ___print_memory()
 
 /**
  	@func	addToUsedBlocks
- 	@brief	Добавляет блок в список занятых блоков указанной страницы
-	@param	[in] _block			указатель на блок
-	@param	[in] _page			указатель на страницу	
+ 	@brief	Р”РѕР±Р°РІР»СЏРµС‚ Р±Р»РѕРє РІ СЃРїРёСЃРѕРє Р·Р°РЅСЏС‚С‹С… Р±Р»РѕРєРѕРІ СѓРєР°Р·Р°РЅРЅРѕР№ СЃС‚СЂР°РЅРёС†С‹
+	@param	[in] _block			СѓРєР°Р·Р°С‚РµР»СЊ РЅР° Р±Р»РѕРє
+	@param	[in] _page			СѓРєР°Р·Р°С‚РµР»СЊ РЅР° СЃС‚СЂР°РЅРёС†Сѓ	
  **/
 void addToUsedBlocks(struct block *_block, struct page *_page)
 {
@@ -335,16 +335,16 @@ void addToFreeBlocks(struct block *_block, struct page *_page)
 {
 	struct block *freeBlockPtr = _page -> pFirstFree;
 	struct block *parentBlockPtr = NULL;
-	// находим крайний свободный блок
+	// РЅР°С…РѕРґРёРј РєСЂР°Р№РЅРёР№ СЃРІРѕР±РѕРґРЅС‹Р№ Р±Р»РѕРє
 	while (freeBlockPtr)
 	{
 		parentBlockPtr = freeBlockPtr;
 		freeBlockPtr = freeBlockPtr -> pNext;
 	}
-	// если нашли, то добавляем освобождённый блок в конец свободных блоков
+	// РµСЃР»Рё РЅР°С€Р»Рё, С‚Рѕ РґРѕР±Р°РІР»СЏРµРј РѕСЃРІРѕР±РѕР¶РґС‘РЅРЅС‹Р№ Р±Р»РѕРє РІ РєРѕРЅРµС† СЃРІРѕР±РѕРґРЅС‹С… Р±Р»РѕРєРѕРІ
 	if (parentBlockPtr)
 	{
-		// если свободные блоки идут друг за другом, то их склеиваем
+		// РµСЃР»Рё СЃРІРѕР±РѕРґРЅС‹Рµ Р±Р»РѕРєРё РёРґСѓС‚ РґСЂСѓРі Р·Р° РґСЂСѓРіРѕРј, С‚Рѕ РёС… СЃРєР»РµРёРІР°РµРј
 		if ((parentBlockPtr -> offsetBlock + parentBlockPtr -> szBlock)
 			== _block -> offsetBlock)
 		{
@@ -365,31 +365,31 @@ void addToFreeBlocks(struct block *_block, struct page *_page)
 
 /**
  	@func	mallocInPage
- 	@brief	Выделяет блок памяти определенного размера в определённой странице
-	@param	[out] ptr		адресс блока
-	@param	[in]  szBlock	размер блока
-	@param	[in]  _page		адрес страницы
+ 	@brief	Р’С‹РґРµР»СЏРµС‚ Р±Р»РѕРє РїР°РјСЏС‚Рё РѕРїСЂРµРґРµР»РµРЅРЅРѕРіРѕ СЂР°Р·РјРµСЂР° РІ РѕРїСЂРµРґРµР»С‘РЅРЅРѕР№ СЃС‚СЂР°РЅРёС†Рµ
+	@param	[out] ptr		Р°РґСЂРµСЃСЃ Р±Р»РѕРєР°
+	@param	[in]  szBlock	СЂР°Р·РјРµСЂ Р±Р»РѕРєР°
+	@param	[in]  _page		Р°РґСЂРµСЃ СЃС‚СЂР°РЅРёС†С‹
 	
-	@return	код ошибки
-	@retval	0	успешное выполнение
-	@retval	1	неизвестная ошибка
+	@return	РєРѕРґ РѕС€РёР±РєРё
+	@retval	0	СѓСЃРїРµС€РЅРѕРµ РІС‹РїРѕР»РЅРµРЅРёРµ
+	@retval	1	РЅРµРёР·РІРµСЃС‚РЅР°СЏ РѕС€РёР±РєР°
  **/
 int mallocInPage(VA* ptr, size_t szBlock, int pageNum)
 {
 	struct page *_page = &pageTable[pageNum];
 	struct block *blockPtr = _page -> pFirstFree;
 	struct block *parentBlockPtr = NULL;
-	// ищем подходящий блок
+	// РёС‰РµРј РїРѕРґС…РѕРґСЏС‰РёР№ Р±Р»РѕРє
 	while (blockPtr)
 	{
-		// если нашли подходящий по размеру блок
+		// РµСЃР»Рё РЅР°С€Р»Рё РїРѕРґС…РѕРґСЏС‰РёР№ РїРѕ СЂР°Р·РјРµСЂСѓ Р±Р»РѕРє
 		if (blockPtr -> szBlock >= szBlock)
 		{
 			int vaddr = pageNum * sizePage + blockPtr -> offsetBlock + 1;
-			*ptr = (VA) (vaddr);	// прибавляем единицу, чтобы указатель на первый блок не был нулевым
+			*ptr = (VA) (vaddr);	// РїСЂРёР±Р°РІР»СЏРµРј РµРґРёРЅРёС†Сѓ, С‡С‚РѕР±С‹ СѓРєР°Р·Р°С‚РµР»СЊ РЅР° РїРµСЂРІС‹Р№ Р±Р»РѕРє РЅРµ Р±С‹Р» РЅСѓР»РµРІС‹Рј
 			if (blockPtr -> szBlock == szBlock)
 			{
-				// свободный блок заняли полностью
+				// СЃРІРѕР±РѕРґРЅС‹Р№ Р±Р»РѕРє Р·Р°РЅСЏР»Рё РїРѕР»РЅРѕСЃС‚СЊСЋ
 				if (parentBlockPtr)
 					parentBlockPtr -> pNext = blockPtr -> pNext;
 				else
@@ -399,7 +399,7 @@ int mallocInPage(VA* ptr, size_t szBlock, int pageNum)
 			}
 			else
 			{
-				// создаём новый занятый блок
+				// СЃРѕР·РґР°С‘Рј РЅРѕРІС‹Р№ Р·Р°РЅСЏС‚С‹Р№ Р±Р»РѕРє
 				struct block* usedBlock;
 				usedBlock = (struct block *) malloc(sizeof(struct block));
 				usedBlock -> offsetBlock = blockPtr -> offsetBlock;
@@ -407,18 +407,18 @@ int mallocInPage(VA* ptr, size_t szBlock, int pageNum)
 				usedBlock -> szBlock = szBlock;
 				addToUsedBlocks(usedBlock, _page);
 
-				// свободный блок сужается
+				// СЃРІРѕР±РѕРґРЅС‹Р№ Р±Р»РѕРє СЃСѓР¶Р°РµС‚СЃСЏ
 				blockPtr -> offsetBlock += szBlock;
 				blockPtr -> szBlock -= szBlock;				
 			}
-			// обновляем информацию о странице
+			// РѕР±РЅРѕРІР»СЏРµРј РёРЅС„РѕСЂРјР°С†РёСЋ Рѕ СЃС‚СЂР°РЅРёС†Рµ
 			_page -> maxSizeFreeBlock = getMaxSizeFreeBlock(*_page);
 			_page -> activityFactor++;
 			return SUCCESSFUL_CODE;
 		}
 		else
 		{
-			// блок ещё не найден
+			// Р±Р»РѕРє РµС‰С‘ РЅРµ РЅР°Р№РґРµРЅ
 			parentBlockPtr = blockPtr;
 			blockPtr = blockPtr -> pNext;
 		}
@@ -428,7 +428,7 @@ int mallocInPage(VA* ptr, size_t szBlock, int pageNum)
 
 /**
  	@func	nullMemory
- 	@brief	Обнуляет память
+ 	@brief	РћР±РЅСѓР»СЏРµС‚ РїР°РјСЏС‚СЊ
  **/
 void nullMemory()
 {
@@ -442,9 +442,9 @@ void nullMemory()
 
 /**
  	@func	getMaxSizeFreeBlock
- 	@brief	Находит максимальную длину свободного блока в странице	
-	@param	[in] _page			_страница	
-	@return	максимальная длину свободного блока в странице	
+ 	@brief	РќР°С…РѕРґРёС‚ РјР°РєСЃРёРјР°Р»СЊРЅСѓСЋ РґР»РёРЅСѓ СЃРІРѕР±РѕРґРЅРѕРіРѕ Р±Р»РѕРєР° РІ СЃС‚СЂР°РЅРёС†Рµ	
+	@param	[in] _page			_СЃС‚СЂР°РЅРёС†Р°	
+	@return	РјР°РєСЃРёРјР°Р»СЊРЅР°СЏ РґР»РёРЅСѓ СЃРІРѕР±РѕРґРЅРѕРіРѕ Р±Р»РѕРєР° РІ СЃС‚СЂР°РЅРёС†Рµ	
  **/
 unsigned int getMaxSizeFreeBlock(struct page _page)
 {
@@ -463,8 +463,8 @@ unsigned int getMaxSizeFreeBlock(struct page _page)
 
 /**
  	@func	getLeastActivePageInMemory
- 	@brief	Находит наименее активную страницу в памяти
-	@return	наименее активная страница
+ 	@brief	РќР°С…РѕРґРёС‚ РЅР°РёРјРµРЅРµРµ Р°РєС‚РёРІРЅСѓСЋ СЃС‚СЂР°РЅРёС†Сѓ РІ РїР°РјСЏС‚Рё
+	@return	РЅР°РёРјРµРЅРµРµ Р°РєС‚РёРІРЅР°СЏ СЃС‚СЂР°РЅРёС†Р°
  **/
 struct page* getLeastActivePageInMemory()
 {	
@@ -473,7 +473,7 @@ struct page* getLeastActivePageInMemory()
 	struct page* minActivityPage = NULL;
 	for (i = 0; i < numberOfPages; i++)
 	{
-		// если страница в памяти, и её коэффициент активности оказался меньше
+		// РµСЃР»Рё СЃС‚СЂР°РЅРёС†Р° РІ РїР°РјСЏС‚Рё, Рё РµС‘ РєРѕСЌС„С„РёС†РёРµРЅС‚ Р°РєС‚РёРІРЅРѕСЃС‚Рё РѕРєР°Р·Р°Р»СЃСЏ РјРµРЅСЊС€Рµ
 		if (pageTable[i].pInfo.isUse)
 		{
 			if (!minActivityPage ||
@@ -489,18 +489,18 @@ struct page* getLeastActivePageInMemory()
 
 /**
  	@func	convertVirtualtoPhysicalAddress
- 	@brief	Концертация виртуального адреса в физический
-	@param	[in] ptr			виртуальный адрес
-	@param	[out] offsetPage	смещение страницы
-	@param	[out] offsetBlock	смещение блока
-	@return	физический адрес
+ 	@brief	РљРѕРЅС†РµСЂС‚Р°С†РёСЏ РІРёСЂС‚СѓР°Р»СЊРЅРѕРіРѕ Р°РґСЂРµСЃР° РІ С„РёР·РёС‡РµСЃРєРёР№
+	@param	[in] ptr			РІРёСЂС‚СѓР°Р»СЊРЅС‹Р№ Р°РґСЂРµСЃ
+	@param	[out] offsetPage	СЃРјРµС‰РµРЅРёРµ СЃС‚СЂР°РЅРёС†С‹
+	@param	[out] offsetBlock	СЃРјРµС‰РµРЅРёРµ Р±Р»РѕРєР°
+	@return	С„РёР·РёС‡РµСЃРєРёР№ Р°РґСЂРµСЃ
  **/
 VA convertVirtualtoPhysicalAddress(VA ptr, int *offsetPage, int *offsetBlock)
 {
 	struct block *trueBlock, *tempBlock;
 	int maxBlockOffset;
 	const int SIGN_DIFFERENCE = 256;
-	int vaddr = (int)ptr - 1;		// отнимаем единицу, которую прибавили при выделении блока (чтобы указатель на первый блок не был нулевым)
+	int vaddr = (int)ptr - 1;		// РѕС‚РЅРёРјР°РµРј РµРґРёРЅРёС†Сѓ, РєРѕС‚РѕСЂСѓСЋ РїСЂРёР±Р°РІРёР»Рё РїСЂРё РІС‹РґРµР»РµРЅРёРё Р±Р»РѕРєР° (С‡С‚РѕР±С‹ СѓРєР°Р·Р°С‚РµР»СЊ РЅР° РїРµСЂРІС‹Р№ Р±Р»РѕРє РЅРµ Р±С‹Р» РЅСѓР»РµРІС‹Рј)
 	VA allocp = NULL;
 	//int offset;
 	if (vaddr < 0)
@@ -527,10 +527,10 @@ VA convertVirtualtoPhysicalAddress(VA ptr, int *offsetPage, int *offsetBlock)
 
 /**
  	@func	findBlock
- 	@brief	Находит блок с указанным смещением в указанной странице
-	@param	[in] offsetPage	смещение страницы
-	@param	[in] offsetBlock	смещение блока
-	@return	указатель на искомый блок
+ 	@brief	РќР°С…РѕРґРёС‚ Р±Р»РѕРє СЃ СѓРєР°Р·Р°РЅРЅС‹Рј СЃРјРµС‰РµРЅРёРµРј РІ СѓРєР°Р·Р°РЅРЅРѕР№ СЃС‚СЂР°РЅРёС†Рµ
+	@param	[in] offsetPage	СЃРјРµС‰РµРЅРёРµ СЃС‚СЂР°РЅРёС†С‹
+	@param	[in] offsetBlock	СЃРјРµС‰РµРЅРёРµ Р±Р»РѕРєР°
+	@return	СѓРєР°Р·Р°С‚РµР»СЊ РЅР° РёСЃРєРѕРјС‹Р№ Р±Р»РѕРє
  **/
 struct block* findBlock(int offsetPage, int offsetBlock)
 {
@@ -556,13 +556,13 @@ struct block* findParentBlock(int offsetPage, int offsetBlock)
 
 /**
  	@func	swap
- 	@brief	Процедура страничного прерывания
-	@param	[in] memoryPage		страница в памяти
-	@param	[in] swopPage		страница на диске
-	@return	код ошибки
-	@retval	0	успешное выполнение
-	@retval	-1	страница на диске не найдена
-	@retval	-2	неожиданный конец файла
+ 	@brief	РџСЂРѕС†РµРґСѓСЂР° СЃС‚СЂР°РЅРёС‡РЅРѕРіРѕ РїСЂРµСЂС‹РІР°РЅРёСЏ
+	@param	[in] memoryPage		СЃС‚СЂР°РЅРёС†Р° РІ РїР°РјСЏС‚Рё
+	@param	[in] swopPage		СЃС‚СЂР°РЅРёС†Р° РЅР° РґРёСЃРєРµ
+	@return	РєРѕРґ РѕС€РёР±РєРё
+	@retval	0	СѓСЃРїРµС€РЅРѕРµ РІС‹РїРѕР»РЅРµРЅРёРµ
+	@retval	-1	СЃС‚СЂР°РЅРёС†Р° РЅР° РґРёСЃРєРµ РЅРµ РЅР°Р№РґРµРЅР°
+	@retval	-2	РЅРµРѕР¶РёРґР°РЅРЅС‹Р№ РєРѕРЅРµС† С„Р°Р№Р»Р°
  **/
 int swap(struct page *memoryPage, struct page *swopPage)
 {
@@ -589,15 +589,15 @@ int swap(struct page *memoryPage, struct page *swopPage)
 
 /**
  	@func	readf
- 	@brief	Читает страницу из файла (свопинга)
+ 	@brief	Р§РёС‚Р°РµС‚ СЃС‚СЂР°РЅРёС†Сѓ РёР· С„Р°Р№Р»Р° (СЃРІРѕРїРёРЅРіР°)
 	
-	@param	[in]  offsetPage	смещение страницы в файле
-	@param	[out] readPage		место для прочитанной страницы
+	@param	[in]  offsetPage	СЃРјРµС‰РµРЅРёРµ СЃС‚СЂР°РЅРёС†С‹ РІ С„Р°Р№Р»Рµ
+	@param	[out] readPage		РјРµСЃС‚Рѕ РґР»СЏ РїСЂРѕС‡РёС‚Р°РЅРЅРѕР№ СЃС‚СЂР°РЅРёС†С‹
 	
-	@return	код ошибки
-	@retval	0	успешное выполнение
-	@retval	-1	страница не найдена
-	@retval	-2	неожиданный конец файла
+	@return	РєРѕРґ РѕС€РёР±РєРё
+	@retval	0	СѓСЃРїРµС€РЅРѕРµ РІС‹РїРѕР»РЅРµРЅРёРµ
+	@retval	-1	СЃС‚СЂР°РЅРёС†Р° РЅРµ РЅР°Р№РґРµРЅР°
+	@retval	-2	РЅРµРѕР¶РёРґР°РЅРЅС‹Р№ РєРѕРЅРµС† С„Р°Р№Р»Р°
  **/
 int readf(unsigned long offsetPage, VA readPage)
 {
@@ -637,15 +637,15 @@ int readf(unsigned long offsetPage, VA readPage)
 
 /**
  	@func	writef
- 	@brief	Пишет страницу в файл (свопинг)
+ 	@brief	РџРёС€РµС‚ СЃС‚СЂР°РЅРёС†Сѓ РІ С„Р°Р№Р» (СЃРІРѕРїРёРЅРі)
 	
-	@param	[in] offsetPage		смещение страницы в файле
-	@param	[in] writtenPage	содержимое страницы
+	@param	[in] offsetPage		СЃРјРµС‰РµРЅРёРµ СЃС‚СЂР°РЅРёС†С‹ РІ С„Р°Р№Р»Рµ
+	@param	[in] writtenPage	СЃРѕРґРµСЂР¶РёРјРѕРµ СЃС‚СЂР°РЅРёС†С‹
 	
-	@return	код ошибки
-	@retval	0	успешное выполнение
-	@retval	-1	страница не найдена
-	@retval	-2	неожиданный конец файла
+	@return	РєРѕРґ РѕС€РёР±РєРё
+	@retval	0	СѓСЃРїРµС€РЅРѕРµ РІС‹РїРѕР»РЅРµРЅРёРµ
+	@retval	-1	СЃС‚СЂР°РЅРёС†Р° РЅРµ РЅР°Р№РґРµРЅР°
+	@retval	-2	РЅРµРѕР¶РёРґР°РЅРЅС‹Р№ РєРѕРЅРµС† С„Р°Р№Р»Р°
  **/
 int writef(unsigned long offsetPage, VA writtenPage)
 {
@@ -658,10 +658,10 @@ int writef(unsigned long offsetPage, VA writtenPage)
 	int __errno;
 
 	fileOffset = offsetPage * sizePage;
-	__errno = fopen_s(&fp, SWAPING_NAME, "r+");		// открываем для модификации
+	__errno = fopen_s(&fp, SWAPING_NAME, "r+");		// РѕС‚РєСЂС‹РІР°РµРј РґР»СЏ РјРѕРґРёС„РёРєР°С†РёРё
 	if (__errno == 2)
 	{
-		// если попали сюда, значит своп ещё не создан, создаём его
+		// РµСЃР»Рё РїРѕРїР°Р»Рё СЃСЋРґР°, Р·РЅР°С‡РёС‚ СЃРІРѕРї РµС‰С‘ РЅРµ СЃРѕР·РґР°РЅ, СЃРѕР·РґР°С‘Рј РµРіРѕ
 		__errno = fopen_s(&fp, SWAPING_NAME, "w");
 	}
 	if (!__errno)
@@ -694,8 +694,8 @@ void _printBuffer(VA ptr, size_t szBuffer)
 	unsigned int j;
 	struct block* readBlock;
 	raddr = convertVirtualtoPhysicalAddress(ptr, &indexPage, &offsetBlock);
-	// если не получили адрес, то нужный блок в свопе
-	// выполняем страничное прерывание
+	// РµСЃР»Рё РЅРµ РїРѕР»СѓС‡РёР»Рё Р°РґСЂРµСЃ, С‚Рѕ РЅСѓР¶РЅС‹Р№ Р±Р»РѕРє РІ СЃРІРѕРїРµ
+	// РІС‹РїРѕР»РЅСЏРµРј СЃС‚СЂР°РЅРёС‡РЅРѕРµ РїСЂРµСЂС‹РІР°РЅРёРµ
 	if (!raddr)
 	{
 		int __errno = swap(getLeastActivePageInMemory(), &pageTable[indexPage]);
